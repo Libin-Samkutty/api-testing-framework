@@ -1,0 +1,16 @@
+export const rwErrorResponseSchema = {
+  type: 'object',
+  properties: {
+    errors: {
+      type: 'object',
+      properties: {
+        body: {
+          type: 'array',
+          items: { type: 'string' },
+        },
+      },
+      required: ['body'],
+    },
+  },
+  required: ['errors'],
+} as const;

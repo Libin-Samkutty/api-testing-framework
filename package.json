@@ -1,0 +1,26 @@
+{
+  "name": "api-testing-framework",
+  "version": "1.0.0",
+  "description": "API-First Testing Framework - ReqRes + RealWorld (Conduit)",
+  "private": true,
+  "scripts": {
+    "test": "npx playwright test",
+    "test:reqres": "npx playwright test --project=reqres-api",
+    "test:realworld": "npx playwright test --project=realworld-api",
+    "test:mocks": "npx playwright test --project=mock-scenarios",
+    "test:ci": "npx playwright test --project=reqres-api --reporter=list,json",
+    "test:nightly": "npx playwright test --project=realworld-api --reporter=html",
+    "test:all": "npx playwright test --reporter=html",
+    "report": "npx playwright show-report",
+    "lint": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@faker-js/faker": "^9.2.0",
+    "@playwright/test": "^1.48.0",
+    "@types/node": "^25.5.0",
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1",
+    "dotenv": "^16.4.5",
+    "typescript": "^5.6.3"
+  }
+}
