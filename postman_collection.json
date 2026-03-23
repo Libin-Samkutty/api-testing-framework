@@ -1,0 +1,1663 @@
+{
+  "info": {
+    "_postman_id": "f8a2b1c3-d4e5-6f78-9012-abcdef123456",
+    "name": "API Testing Framework",
+    "description": "Postman collection mirroring the Playwright-based API testing framework.\n\nCovers three APIs:\n- ReqRes (https://reqres.in) — auth, user CRUD, schema contracts\n- RealWorld / Conduit (https://api.realworld.show/api) — auth, articles, comments, profiles\n- Mock Server (http://localhost:9090) — payment and notification scenarios\n\n**Recommended run order for RealWorld:**\n1. Auth → Register (auto-sets `realworld_token`, `realworld_username`)\n2. Articles → Create Article (auto-sets `article_slug`)\n3. Comments → Add Comment (auto-sets `comment_id`)\n4. Then run Get/Update/Delete/Follow requests freely\n\n**Constraints:**\n- Mock Server folder requires `npm run mock` to be running locally\n- `{{realworld_token}}` must be populated before hitting authenticated RealWorld endpoints\n- Dynamic variables (`{{$randomEmail}}` etc.) generate new data on every run",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "reqres_base_url",    "value": "http://localhost:9090",            "type": "string", "description": "Routes to local mock server — reqres.in is Cloudflare-protected and blocks automated clients" },
+    { "key": "realworld_base_url", "value": "https://api.realworld.show/api",   "type": "string" },
+    { "key": "mock_base_url",      "value": "http://localhost:9090",            "type": "string" },
+    { "key": "realworld_token",    "value": "",                                 "type": "string" },
+    { "key": "realworld_username", "value": "",                                 "type": "string" },
+    { "key": "temp_email",         "value": "",                                 "type": "string" },
+    { "key": "temp_password",      "value": "Test1234!",                        "type": "string" },
+    { "key": "article_slug",       "value": "",                                 "type": "string" },
+    { "key": "comment_id",         "value": "",                                 "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "ReqRes",
+      "description": "Tests against the public ReqRes API (https://reqres.in). No authentication required. All requests use Content-Type: application/json.",
+      "item": [
+        {
+          "name": "Auth",
+          "item": [
+            {
+              "name": "Login - Success",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"eve.holt@reqres.in\",\n  \"password\": \"cityslicka\"\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "url": {
+                  "raw": "{{reqres_base_url}}/api/login",
+                  "host": ["{{reqres_base_url}}"],
+                  "path": ["api", "login"]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 200', function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test('Response has token', function () {",
+                      "    var body = pm.response.json();",
+                      "    pm.expect(body).to.have.property('token');",
+                      "    pm.expect(typeof body.token).to.equal('string');",
+                      "    pm.expect(body.token.length).to.be.greaterThan(0);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Login - Missing Password (400)",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"eve.holt@reqres.in\"\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "url": {
+                  "raw": "{{reqres_base_url}}/api/login",
+                  "host": ["{{reqres_base_url}}"],
+                  "path": ["api", "login"]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 400', function () {",
+                      "    pm.response.to.have.status(400);",
+                      "});",
+                      "",
+                      "pm.test('Response has error message', function () {",
+                      "    var body = pm.response.json();",
+                      "    pm.expect(body).to.have.property('error');",
+                      "    pm.expect(typeof body.error).to.equal('string');",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Login - Missing Email (400)",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"password\": \"cityslicka\"\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "url": {
+                  "raw": "{{reqres_base_url}}/api/login",
+                  "host": ["{{reqres_base_url}}"],
+                  "path": ["api", "login"]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 400', function () {",
+                      "    pm.response.to.have.status(400);",
+                      "});",
+                      "",
+                      "pm.test('Response has error message', function () {",
+                      "    var body = pm.response.json();",
+                      "    pm.expect(body).to.have.property('error');",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Login - Empty Body (400)",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "url": {
+                  "raw": "{{reqres_base_url}}/api/login",
+                  "host": ["{{reqres_base_url}}"],
+                  "path": ["api", "login"]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 400', function () {",
+                      "    pm.response.to.have.status(400);",
+                      "});",
+                      "",
+                      "pm.test('Response has error message', function () {",
+                      "    var body = pm.response.json();",
+                      "    pm.expect(body).to.have.property('error');",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Register - Success",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"eve.holt@reqres.in\",\n  \"password\": \"pistol\"\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "url": {
+                  "raw": "{{reqres_base_url}}/api/register",
+                  "host": ["{{reqres_base_url}}"],
+                  "path": ["api", "register"]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 200', function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test('Response has id and token', function () {",
+                      "    var body = pm.response.json();",
+                      "    pm.expect(body).to.have.property('id');",
+                      "    pm.expect(body).to.have.property('token');",
+                      "    pm.expect(typeof body.id).to.equal('number');",
+                      "    pm.expect(typeof body.token).to.equal('string');",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Register - Missing Password (400)",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"eve.holt@reqres.in\"\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "url": {
+                  "raw": "{{reqres_base_url}}/api/register",
+                  "host": ["{{reqres_base_url}}"],
+                  "path": ["api", "register"]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 400', function () {",
+                      "    pm.response.to.have.status(400);",
+                      "});",
+                      "",
+                      "pm.test('Response has error message', function () {",
+                      "    var body = pm.response.json();",
+                      "    pm.expect(body).to.have.property('error');",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Users",
+          "item": [
+            {
+              "name": "List Users - Page 1",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{reqres_base_url}}/api/users?page=1",
+                  "host": ["{{reqres_base_url}}"],
+                  "path": ["api", "users"],
+                  "query": [{ "key": "page", "value": "1" }]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 200', function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test('Pagination fields are present', function () {",
+                      "    var body = pm.response.json();",
+                      "    pm.expect(body).to.have.property('page');",
+                      "    pm.expect(body).to.have.property('per_page');",
+                      "    pm.expect(body).to.have.property('total');",
+                      "    pm.expect(body).to.have.property('total_pages');",
+                      "    pm.expect(body.page).to.equal(1);",
+                      "});",
+                      "",
+                      "pm.test('Data array is non-empty', function () {",
+                      "    var body = pm.response.json();",
+                      "    pm.expect(Array.isArray(body.data)).to.be.true;",
+                      "    pm.expect(body.data.length).to.be.greaterThan(0);",
+                      "});",
+                      "",
+                      "pm.test('User objects have required fields', function () {",
+                      "    var body = pm.response.json();",
+                      "    var user = body.data[0];",
+                      "    pm.expect(user).to.have.property('id');",
+                      "    pm.expect(user).to.have.property('email');",
+                      "    pm.expect(user).to.have.property('first_name');",
+                      "    pm.expect(user).to.have.property('last_name');",
+                      "    pm.expect(user).to.have.property('avatar');",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Get User - id=2",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{reqres_base_url}}/api/users/2",
+                  "host": ["{{reqres_base_url}}"],
+                  "path": ["api", "users", "2"]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 200', function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test('User data is correct', function () {",
+                      "    var body = pm.response.json();",
+                      "    pm.expect(body).to.have.property('data');",
+                      "    pm.expect(body.data.id).to.equal(2);",
+                      "    pm.expect(body.data).to.have.property('email');",
+                      "    pm.expect(body.data).to.have.property('first_name');",
+                      "    pm.expect(body.data).to.have.property('last_name');",
+                      "    pm.expect(body.data).to.have.property('avatar');",
+                      "});",
+                      "",
+                      "pm.test('Support object is present', function () {",
+                      "    var body = pm.response.json();",
+                      "    pm.expect(body).to.have.property('support');",
+                      "    pm.expect(body.support).to.have.property('url');",
+                      "    pm.expect(body.support).to.have.property('text');",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Get User - Not Found (id=9999)",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{reqres_base_url}}/api/users/9999",
+                  "host": ["{{reqres_base_url}}"],
+                  "path": ["api", "users", "9999"]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 404', function () {",
+                      "    pm.response.to.have.status(404);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Create User",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Jane Doe\",\n  \"job\": \"QA Engineer\"\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "url": {
+                  "raw": "{{reqres_base_url}}/api/users",
+                  "host": ["{{reqres_base_url}}"],
+                  "path": ["api", "users"]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 201', function () {",
+                      "    pm.response.to.have.status(201);",
+                      "});",
+                      "",
+                      "pm.test('Created user has correct fields', function () {",
+                      "    var body = pm.response.json();",
+                      "    pm.expect(body).to.have.property('id');",
+                      "    pm.expect(body).to.have.property('createdAt');",
+                      "    pm.expect(body.name).to.equal('Jane Doe');",
+                      "    pm.expect(body.job).to.equal('QA Engineer');",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Update User - id=2",
+              "request": {
+                "method": "PUT",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Updated Name\",\n  \"job\": \"Senior QA\"\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "url": {
+                  "raw": "{{reqres_base_url}}/api/users/2",
+                  "host": ["{{reqres_base_url}}"],
+                  "path": ["api", "users", "2"]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 200', function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test('Updated fields are reflected', function () {",
+                      "    var body = pm.response.json();",
+                      "    pm.expect(body.name).to.equal('Updated Name');",
+                      "    pm.expect(body.job).to.equal('Senior QA');",
+                      "    pm.expect(body).to.have.property('updatedAt');",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Delete User - id=2",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{reqres_base_url}}/api/users/2",
+                  "host": ["{{reqres_base_url}}"],
+                  "path": ["api", "users", "2"]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 204 (No Content)', function () {",
+                      "    pm.response.to.have.status(204);",
+                      "});",
+                      "",
+                      "pm.test('Response body is empty', function () {",
+                      "    pm.expect(pm.response.text()).to.equal('');",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Schema Contracts",
+          "description": "Validates response shapes against the JSON Schema definitions in src/schemas/reqres/. Mirrors schema-contracts.spec.ts. Full AJV validation is not available in Postman — key field presence and type checks are used instead.",
+          "item": [
+            {
+              "name": "User List Schema",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{reqres_base_url}}/api/users?page=1",
+                  "host": ["{{reqres_base_url}}"],
+                  "path": ["api", "users"],
+                  "query": [{ "key": "page", "value": "1" }]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 200', function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test('Schema: top-level fields are correct types', function () {",
+                      "    var body = pm.response.json();",
+                      "    pm.expect(typeof body.page).to.equal('number');",
+                      "    pm.expect(typeof body.per_page).to.equal('number');",
+                      "    pm.expect(typeof body.total).to.equal('number');",
+                      "    pm.expect(typeof body.total_pages).to.equal('number');",
+                      "    pm.expect(Array.isArray(body.data)).to.be.true;",
+                      "});",
+                      "",
+                      "pm.test('Schema: each user object has required fields', function () {",
+                      "    var body = pm.response.json();",
+                      "    body.data.forEach(function (user) {",
+                      "        pm.expect(typeof user.id).to.equal('number');",
+                      "        pm.expect(typeof user.email).to.equal('string');",
+                      "        pm.expect(typeof user.first_name).to.equal('string');",
+                      "        pm.expect(typeof user.last_name).to.equal('string');",
+                      "        pm.expect(typeof user.avatar).to.equal('string');",
+                      "    });",
+                      "});",
+                      "",
+                      "pm.test('Schema: support object has url and text', function () {",
+                      "    var body = pm.response.json();",
+                      "    pm.expect(typeof body.support.url).to.equal('string');",
+                      "    pm.expect(typeof body.support.text).to.equal('string');",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Login Response Schema",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"eve.holt@reqres.in\",\n  \"password\": \"cityslicka\"\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "url": {
+                  "raw": "{{reqres_base_url}}/api/login",
+                  "host": ["{{reqres_base_url}}"],
+                  "path": ["api", "login"]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 200', function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test('Schema: token is a non-empty string', function () {",
+                      "    var body = pm.response.json();",
+                      "    pm.expect(typeof body.token).to.equal('string');",
+                      "    pm.expect(body.token.length).to.be.greaterThan(0);",
+                      "});",
+                      "",
+                      "pm.test('Schema: no unexpected error field', function () {",
+                      "    var body = pm.response.json();",
+                      "    pm.expect(body).to.not.have.property('error');",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Register Response Schema",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"eve.holt@reqres.in\",\n  \"password\": \"pistol\"\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "url": {
+                  "raw": "{{reqres_base_url}}/api/register",
+                  "host": ["{{reqres_base_url}}"],
+                  "path": ["api", "register"]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 200', function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test('Schema: id is a number', function () {",
+                      "    var body = pm.response.json();",
+                      "    pm.expect(typeof body.id).to.equal('number');",
+                      "});",
+                      "",
+                      "pm.test('Schema: token is a non-empty string', function () {",
+                      "    var body = pm.response.json();",
+                      "    pm.expect(typeof body.token).to.equal('string');",
+                      "    pm.expect(body.token.length).to.be.greaterThan(0);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "RealWorld (Conduit)",
+      "description": "Tests against the RealWorld / Conduit API (https://api.realworld.show/api).\n\nAuthenticated endpoints require `{{realworld_token}}` to be set. Run 'Register User' or 'Login User' first to populate this variable automatically.\n\nRun order: Auth → Articles → Comments → Profiles.",
+      "item": [
+        {
+          "name": "Auth",
+          "item": [
+            {
+              "name": "Register User",
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "// Generate unique credentials for this run",
+                      "var ts = Date.now();",
+                      "pm.collectionVariables.set('temp_email', 'testuser' + ts + '@example.com');",
+                      "pm.collectionVariables.set('temp_username', 'user' + ts);",
+                      "pm.collectionVariables.set('temp_password', 'Test1234!');"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 201', function () {",
+                      "    pm.response.to.have.status(201);",
+                      "});",
+                      "",
+                      "pm.test('Response has user object with required fields', function () {",
+                      "    var body = pm.response.json();",
+                      "    pm.expect(body).to.have.property('user');",
+                      "    pm.expect(body.user).to.have.property('email');",
+                      "    pm.expect(body.user).to.have.property('token');",
+                      "    pm.expect(body.user).to.have.property('username');",
+                      "    pm.expect(typeof body.user.token).to.equal('string');",
+                      "    pm.expect(body.user.token.length).to.be.greaterThan(0);",
+                      "});",
+                      "",
+                      "// Auto-capture token and username for downstream requests",
+                      "var body = pm.response.json();",
+                      "if (body.user && body.user.token) {",
+                      "    pm.collectionVariables.set('realworld_token', body.user.token);",
+                      "    pm.collectionVariables.set('realworld_username', body.user.username);",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"user\": {\n    \"username\": \"{{temp_username}}\",\n    \"email\": \"{{temp_email}}\",\n    \"password\": \"{{temp_password}}\"\n  }\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "url": {
+                  "raw": "{{realworld_base_url}}/users",
+                  "host": ["{{realworld_base_url}}"],
+                  "path": ["users"]
+                }
+              }
+            },
+            {
+              "name": "Register User - Duplicate (409/422)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "// api.realworld.show allows re-registration (returns 201); stricter",
+                      "// implementations return 409/422. Accept all three as valid.",
+                      "pm.test('Status is 201, 409, or 422 for duplicate registration', function () {",
+                      "    pm.expect([201, 409, 422]).to.include(pm.response.code);",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"user\": {\n    \"username\": \"{{temp_username}}\",\n    \"email\": \"{{temp_email}}\",\n    \"password\": \"{{temp_password}}\"\n  }\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "url": {
+                  "raw": "{{realworld_base_url}}/users",
+                  "host": ["{{realworld_base_url}}"],
+                  "path": ["users"]
+                }
+              }
+            },
+            {
+              "name": "Login User",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 200', function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test('Response has user object with token', function () {",
+                      "    var body = pm.response.json();",
+                      "    pm.expect(body).to.have.property('user');",
+                      "    pm.expect(body.user).to.have.property('email');",
+                      "    pm.expect(body.user).to.have.property('token');",
+                      "    pm.expect(body.user).to.have.property('username');",
+                      "    pm.expect(typeof body.user.token).to.equal('string');",
+                      "    pm.expect(body.user.token.length).to.be.greaterThan(0);",
+                      "});",
+                      "",
+                      "// Auto-capture token and username for downstream requests",
+                      "var body = pm.response.json();",
+                      "if (body.user && body.user.token) {",
+                      "    pm.collectionVariables.set('realworld_token', body.user.token);",
+                      "    pm.collectionVariables.set('realworld_username', body.user.username);",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"user\": {\n    \"email\": \"{{temp_email}}\",\n    \"password\": \"{{temp_password}}\"\n  }\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "url": {
+                  "raw": "{{realworld_base_url}}/users/login",
+                  "host": ["{{realworld_base_url}}"],
+                  "path": ["users", "login"]
+                }
+              }
+            },
+            {
+              "name": "Login User - Invalid Credentials (401/422)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 401 or 422 for invalid credentials', function () {",
+                      "    pm.expect([401, 422]).to.include(pm.response.code);",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"user\": {\n    \"email\": \"nobody@nowhere.invalid\",\n    \"password\": \"wrongpassword\"\n  }\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "url": {
+                  "raw": "{{realworld_base_url}}/users/login",
+                  "host": ["{{realworld_base_url}}"],
+                  "path": ["users", "login"]
+                }
+              }
+            },
+            {
+              "name": "Get Current User (Authenticated)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 200', function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test('Response has user with email and token', function () {",
+                      "    var body = pm.response.json();",
+                      "    pm.expect(body).to.have.property('user');",
+                      "    pm.expect(body.user).to.have.property('email');",
+                      "    pm.expect(body.user).to.have.property('token');",
+                      "    pm.expect(body.user).to.have.property('username');",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  { "key": "Authorization", "value": "Token {{realworld_token}}" }
+                ],
+                "url": {
+                  "raw": "{{realworld_base_url}}/user",
+                  "host": ["{{realworld_base_url}}"],
+                  "path": ["user"]
+                }
+              }
+            },
+            {
+              "name": "Get Current User (Unauthenticated - 401/403/422)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 401, 403, or 422 without token', function () {",
+                      "    pm.expect([401, 403, 422]).to.include(pm.response.code);",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{realworld_base_url}}/user",
+                  "host": ["{{realworld_base_url}}"],
+                  "path": ["user"]
+                }
+              }
+            },
+            {
+              "name": "Update User",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 200', function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test('Updated user object is returned', function () {",
+                      "    var body = pm.response.json();",
+                      "    pm.expect(body).to.have.property('user');",
+                      "    pm.expect(body.user).to.have.property('bio');",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "PUT",
+                "header": [
+                  { "key": "Content-Type", "value": "application/json" },
+                  { "key": "Authorization", "value": "Token {{realworld_token}}" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"user\": {\n    \"bio\": \"Updated via Postman collection\"\n  }\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "url": {
+                  "raw": "{{realworld_base_url}}/user",
+                  "host": ["{{realworld_base_url}}"],
+                  "path": ["user"]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Articles",
+          "description": "Run 'Create Article' first — it sets {{article_slug}} for all other requests in this folder.",
+          "item": [
+            {
+              "name": "List Articles",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 200', function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test('Articles array and count are present', function () {",
+                      "    var body = pm.response.json();",
+                      "    pm.expect(Array.isArray(body.articles)).to.be.true;",
+                      "    pm.expect(typeof body.articlesCount).to.equal('number');",
+                      "    pm.expect(body.articlesCount).to.be.at.least(0);",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{realworld_base_url}}/articles?limit=10&offset=0",
+                  "host": ["{{realworld_base_url}}"],
+                  "path": ["articles"],
+                  "query": [
+                    { "key": "limit",  "value": "10" },
+                    { "key": "offset", "value": "0"  }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Get Article Feed (Authenticated)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 200 or auth error', function () {",
+                      "    pm.expect([200, 401, 403, 422]).to.include(pm.response.code);",
+                      "});",
+                      "",
+                      "if (pm.response.code === 200) {",
+                      "    pm.test('Feed has articles array', function () {",
+                      "        var body = pm.response.json();",
+                      "        pm.expect(Array.isArray(body.articles)).to.be.true;",
+                      "        pm.expect(typeof body.articlesCount).to.equal('number');",
+                      "    });",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  { "key": "Authorization", "value": "Token {{realworld_token}}" }
+                ],
+                "url": {
+                  "raw": "{{realworld_base_url}}/articles/feed",
+                  "host": ["{{realworld_base_url}}"],
+                  "path": ["articles", "feed"]
+                }
+              }
+            },
+            {
+              "name": "Create Article",
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "// Generate a unique article title to avoid slug collisions",
+                      "pm.collectionVariables.set('temp_article_title', 'Test Article ' + Date.now());"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 201', function () {",
+                      "    pm.response.to.have.status(201);",
+                      "});",
+                      "",
+                      "pm.test('Article has required fields', function () {",
+                      "    var body = pm.response.json();",
+                      "    pm.expect(body).to.have.property('article');",
+                      "    pm.expect(body.article).to.have.property('slug');",
+                      "    pm.expect(body.article).to.have.property('title');",
+                      "    pm.expect(body.article).to.have.property('description');",
+                      "    pm.expect(body.article).to.have.property('body');",
+                      "    pm.expect(Array.isArray(body.article.tagList)).to.be.true;",
+                      "    pm.expect(body.article).to.have.property('author');",
+                      "});",
+                      "",
+                      "// Auto-capture slug for downstream requests",
+                      "var body = pm.response.json();",
+                      "if (body.article && body.article.slug) {",
+                      "    pm.collectionVariables.set('article_slug', body.article.slug);",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type",  "value": "application/json" },
+                  { "key": "Authorization", "value": "Token {{realworld_token}}" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"article\": {\n    \"title\": \"{{temp_article_title}}\",\n    \"description\": \"A test article created via Postman\",\n    \"body\": \"This is the article body content.\",\n    \"tagList\": [\"postman\", \"testing\"]\n  }\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "url": {
+                  "raw": "{{realworld_base_url}}/articles",
+                  "host": ["{{realworld_base_url}}"],
+                  "path": ["articles"]
+                }
+              }
+            },
+            {
+              "name": "Get Article (Authenticated)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 200', function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test('Article fields are correct', function () {",
+                      "    var body = pm.response.json();",
+                      "    pm.expect(body).to.have.property('article');",
+                      "    pm.expect(body.article).to.have.property('slug');",
+                      "    pm.expect(body.article).to.have.property('title');",
+                      "    pm.expect(body.article).to.have.property('author');",
+                      "    pm.expect(typeof body.article.favorited).to.equal('boolean');",
+                      "    pm.expect(typeof body.article.favoritesCount).to.equal('number');",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  { "key": "Authorization", "value": "Token {{realworld_token}}" }
+                ],
+                "url": {
+                  "raw": "{{realworld_base_url}}/articles/{{article_slug}}",
+                  "host": ["{{realworld_base_url}}"],
+                  "path": ["articles", "{{article_slug}}"]
+                }
+              }
+            },
+            {
+              "name": "Update Article",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 200', function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test('Updated description is reflected', function () {",
+                      "    var body = pm.response.json();",
+                      "    pm.expect(body).to.have.property('article');",
+                      "    pm.expect(body.article.description).to.equal('Updated description via Postman');",
+                      "});",
+                      "",
+                      "// Slug does NOT change when only description/body is updated — keep article_slug intact"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "PUT",
+                "header": [
+                  { "key": "Content-Type",  "value": "application/json" },
+                  { "key": "Authorization", "value": "Token {{realworld_token}}" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"article\": {\n    \"description\": \"Updated description via Postman\"\n  }\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "url": {
+                  "raw": "{{realworld_base_url}}/articles/{{article_slug}}",
+                  "host": ["{{realworld_base_url}}"],
+                  "path": ["articles", "{{article_slug}}"]
+                }
+              }
+            },
+            {
+              "name": "Favorite Article",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 200', function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test('Article is marked as favorited', function () {",
+                      "    var body = pm.response.json();",
+                      "    pm.expect(body.article.favorited).to.equal(true);",
+                      "    pm.expect(body.article.favoritesCount).to.be.at.least(1);",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Authorization", "value": "Token {{realworld_token}}" }
+                ],
+                "url": {
+                  "raw": "{{realworld_base_url}}/articles/{{article_slug}}/favorite",
+                  "host": ["{{realworld_base_url}}"],
+                  "path": ["articles", "{{article_slug}}", "favorite"]
+                }
+              }
+            },
+            {
+              "name": "Unfavorite Article",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 200', function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test('Article is marked as unfavorited', function () {",
+                      "    var body = pm.response.json();",
+                      "    pm.expect(body.article.favorited).to.equal(false);",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  { "key": "Authorization", "value": "Token {{realworld_token}}" }
+                ],
+                "url": {
+                  "raw": "{{realworld_base_url}}/articles/{{article_slug}}/favorite",
+                  "host": ["{{realworld_base_url}}"],
+                  "path": ["articles", "{{article_slug}}", "favorite"]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Comments",
+          "description": "Requires {{article_slug}} to be set (run 'Create Article' first). 'Add Comment' auto-sets {{comment_id}}. Delete Article runs last to keep the article alive for all comment operations.",
+          "item": [
+            {
+              "name": "Add Comment",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 201', function () {",
+                      "    pm.response.to.have.status(201);",
+                      "});",
+                      "",
+                      "pm.test('Comment has required fields', function () {",
+                      "    var body = pm.response.json();",
+                      "    pm.expect(body).to.have.property('comment');",
+                      "    pm.expect(body.comment).to.have.property('id');",
+                      "    pm.expect(body.comment).to.have.property('body');",
+                      "    pm.expect(body.comment).to.have.property('author');",
+                      "    pm.expect(body.comment).to.have.property('createdAt');",
+                      "});",
+                      "",
+                      "// Auto-capture comment id for delete request",
+                      "var body = pm.response.json();",
+                      "if (body.comment && body.comment.id) {",
+                      "    pm.collectionVariables.set('comment_id', body.comment.id);",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Content-Type",  "value": "application/json" },
+                  { "key": "Authorization", "value": "Token {{realworld_token}}" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"comment\": {\n    \"body\": \"This is a test comment from Postman.\"\n  }\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "url": {
+                  "raw": "{{realworld_base_url}}/articles/{{article_slug}}/comments",
+                  "host": ["{{realworld_base_url}}"],
+                  "path": ["articles", "{{article_slug}}", "comments"]
+                }
+              }
+            },
+            {
+              "name": "List Comments (Authenticated)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 200', function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test('Comments array is returned', function () {",
+                      "    var body = pm.response.json();",
+                      "    pm.expect(Array.isArray(body.comments)).to.be.true;",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  { "key": "Authorization", "value": "Token {{realworld_token}}" }
+                ],
+                "url": {
+                  "raw": "{{realworld_base_url}}/articles/{{article_slug}}/comments",
+                  "host": ["{{realworld_base_url}}"],
+                  "path": ["articles", "{{article_slug}}", "comments"]
+                }
+              }
+            },
+            {
+              "name": "Delete Comment",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 204 (No Content)', function () {",
+                      "    pm.response.to.have.status(204);",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  { "key": "Authorization", "value": "Token {{realworld_token}}" }
+                ],
+                "url": {
+                  "raw": "{{realworld_base_url}}/articles/{{article_slug}}/comments/{{comment_id}}",
+                  "host": ["{{realworld_base_url}}"],
+                  "path": ["articles", "{{article_slug}}", "comments", "{{comment_id}}"]
+                }
+              }
+            },
+            {
+              "name": "Delete Article (Cleanup)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 204 (No Content)', function () {",
+                      "    pm.response.to.have.status(204);",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  { "key": "Authorization", "value": "Token {{realworld_token}}" }
+                ],
+                "url": {
+                  "raw": "{{realworld_base_url}}/articles/{{article_slug}}",
+                  "host": ["{{realworld_base_url}}"],
+                  "path": ["articles", "{{article_slug}}"]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Profiles",
+          "description": "Requires {{realworld_username}} to be set (auto-populated by Register/Login). Follow/Unfollow requires {{realworld_token}}.",
+          "item": [
+            {
+              "name": "Get Profile (Authenticated)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 200', function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test('Profile has required fields', function () {",
+                      "    var body = pm.response.json();",
+                      "    pm.expect(body).to.have.property('profile');",
+                      "    pm.expect(body.profile).to.have.property('username');",
+                      "    pm.expect(body.profile).to.have.property('bio');",
+                      "    pm.expect(body.profile).to.have.property('image');",
+                      "    pm.expect(typeof body.profile.following).to.equal('boolean');",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  { "key": "Authorization", "value": "Token {{realworld_token}}" }
+                ],
+                "url": {
+                  "raw": "{{realworld_base_url}}/profiles/{{realworld_username}}",
+                  "host": ["{{realworld_base_url}}"],
+                  "path": ["profiles", "{{realworld_username}}"]
+                }
+              }
+            },
+            {
+              "name": "Follow User",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 200', function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test('Following is true', function () {",
+                      "    var body = pm.response.json();",
+                      "    pm.expect(body.profile.following).to.equal(true);",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  { "key": "Authorization", "value": "Token {{realworld_token}}" }
+                ],
+                "url": {
+                  "raw": "{{realworld_base_url}}/profiles/{{realworld_username}}/follow",
+                  "host": ["{{realworld_base_url}}"],
+                  "path": ["profiles", "{{realworld_username}}", "follow"]
+                }
+              }
+            },
+            {
+              "name": "Unfollow User",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 200', function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test('Following is false', function () {",
+                      "    var body = pm.response.json();",
+                      "    pm.expect(body.profile.following).to.equal(false);",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  { "key": "Authorization", "value": "Token {{realworld_token}}" }
+                ],
+                "url": {
+                  "raw": "{{realworld_base_url}}/profiles/{{realworld_username}}/follow",
+                  "host": ["{{realworld_base_url}}"],
+                  "path": ["profiles", "{{realworld_username}}", "follow"]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Mock Server (localhost:9090)",
+      "description": "Tests against the local mock HTTP server (src/mocks/).\n\n⚠️  REQUIRES the mock server to be running: `npm run mock`\n\nEach scenario corresponds to a different registered handler in the test suite. In the Playwright tests, a handler is registered via `mockServer.register(...)` before each test — meaning the same endpoint returns different responses depending on which handler was last registered.\n\nIn Postman, start the mock server with the desired handler active, then send the request.\n\nEndpoints:\n- POST /api/payments/charge\n- POST /api/notifications/send",
+      "item": [
+        {
+          "name": "Payments",
+          "item": [
+            {
+              "name": "Charge - Success (paymentSuccessHandler)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 200', function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test('Response has transactionId and completed status', function () {",
+                      "    var body = pm.response.json();",
+                      "    pm.expect(body).to.have.property('transactionId');",
+                      "    pm.expect(body.status).to.equal('completed');",
+                      "    pm.expect(typeof body.amount).to.equal('number');",
+                      "    pm.expect(body.currency).to.equal('USD');",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"amount\": 29.99,\n  \"currency\": \"USD\"\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "url": {
+                  "raw": "{{mock_base_url}}/api/payments/charge",
+                  "host": ["{{mock_base_url}}"],
+                  "path": ["api", "payments", "charge"]
+                }
+              }
+            },
+            {
+              "name": "Charge - Gateway Failure (paymentFailureHandler) → /charge/fail",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 502', function () {",
+                      "    pm.response.to.have.status(502);",
+                      "});",
+                      "",
+                      "pm.test('Response has error and GATEWAY_TIMEOUT code', function () {",
+                      "    var body = pm.response.json();",
+                      "    pm.expect(body).to.have.property('error');",
+                      "    pm.expect(body.code).to.equal('GATEWAY_TIMEOUT');",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"amount\": 29.99,\n  \"currency\": \"USD\"\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "url": {
+                  "raw": "{{mock_base_url}}/api/payments/charge/fail",
+                  "host": ["{{mock_base_url}}"],
+                  "path": ["api", "payments", "charge", "fail"]
+                }
+              }
+            },
+            {
+              "name": "Charge - Slow Response (paymentDelayHandler, ~3s) → /charge/slow",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 200', function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test('Response has transactionId and pending status', function () {",
+                      "    var body = pm.response.json();",
+                      "    pm.expect(body).to.have.property('transactionId');",
+                      "    pm.expect(body.status).to.equal('pending');",
+                      "});",
+                      "",
+                      "pm.test('Response time is >= 2500ms (3s delay handler)', function () {",
+                      "    pm.expect(pm.response.responseTime).to.be.at.least(2500);",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"amount\": 29.99,\n  \"currency\": \"USD\"\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "url": {
+                  "raw": "{{mock_base_url}}/api/payments/charge/slow",
+                  "host": ["{{mock_base_url}}"],
+                  "path": ["api", "payments", "charge", "slow"]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Notifications",
+          "item": [
+            {
+              "name": "Send - Success (notificationSuccessHandler)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 200', function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test('Response has messageId and sent status', function () {",
+                      "    var body = pm.response.json();",
+                      "    pm.expect(body).to.have.property('messageId');",
+                      "    pm.expect(body.status).to.equal('sent');",
+                      "    pm.expect(body.channel).to.equal('email');",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"to\": \"user@test.com\",\n  \"subject\": \"Welcome\"\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "url": {
+                  "raw": "{{mock_base_url}}/api/notifications/send",
+                  "host": ["{{mock_base_url}}"],
+                  "path": ["api", "notifications", "send"]
+                }
+              }
+            },
+            {
+              "name": "Send - Service Unavailable (notificationFailureHandler) → /send/fail",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 503', function () {",
+                      "    pm.response.to.have.status(503);",
+                      "});",
+                      "",
+                      "pm.test('Response has retryAfter', function () {",
+                      "    var body = pm.response.json();",
+                      "    pm.expect(body).to.have.property('retryAfter');",
+                      "    pm.expect(typeof body.retryAfter).to.equal('number');",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"to\": \"user@test.com\",\n  \"subject\": \"Welcome\"\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "url": {
+                  "raw": "{{mock_base_url}}/api/notifications/send/fail",
+                  "host": ["{{mock_base_url}}"],
+                  "path": ["api", "notifications", "send", "fail"]
+                }
+              }
+            },
+            {
+              "name": "Send - Queued / Delayed (notificationDelayHandler, ~2s) → /send/slow",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test('Status is 200', function () {",
+                      "    pm.response.to.have.status(200);",
+                      "});",
+                      "",
+                      "pm.test('Response has messageId and queued status', function () {",
+                      "    var body = pm.response.json();",
+                      "    pm.expect(body).to.have.property('messageId');",
+                      "    pm.expect(body.status).to.equal('queued');",
+                      "});",
+                      "",
+                      "pm.test('Response time is >= 1500ms (2s delay handler)', function () {",
+                      "    pm.expect(pm.response.responseTime).to.be.at.least(1500);",
+                      "});"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"to\": \"user@test.com\",\n  \"subject\": \"Welcome\"\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "url": {
+                  "raw": "{{mock_base_url}}/api/notifications/send/slow",
+                  "host": ["{{mock_base_url}}"],
+                  "path": ["api", "notifications", "send", "slow"]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

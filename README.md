@@ -19,6 +19,7 @@ A structured, TypeScript-based API testing framework built on [Playwright](https
 - [Coverage Map](#coverage-map)
 - [CI/CD](#cicd)
 - [Troubleshooting](#troubleshooting)
+- [Postman Collection](#postman-collection)
 - [Useful Links](#useful-links)
 
 ---
@@ -45,6 +46,7 @@ api-testing-framework/
 ├── package.json                  # Dependencies and npm scripts
 ├── tsconfig.json                 # TypeScript compiler config
 ├── playwright.config.ts          # Playwright projects, timeouts, reporters
+├── postman_collection.json       # Postman / Newman collection (all 42 requests)
 ├── .env.example                  # Template for environment variables
 ├── .gitignore
 ├── README.md
@@ -80,13 +82,19 @@ api-testing-framework/
 │   │   └── schema-validator.ts   # AJV-based JSON Schema validator
 │   ├── mocks/
 │   │   ├── mock-server.ts        # Lightweight mock HTTP server setup
+│   │   ├── start-mock-server.ts  # Standalone entry point for `npm run mock`
 │   │   └── handlers/
+│   │       ├── reqres.handler.ts
 │   │       ├── payment.handler.ts
 │   │       └── notification.handler.ts
 │   └── utils/
 │       ├── logger.ts             # Structured console logger
 │       └── helpers.ts            # Shared utility functions
 │
+├── reports/
+│   ├── html/                     # Playwright HTML report (npm run report)
+│   └── postman/
+│       └── index.html            # Newman HTML report (npm run test:postman)
 └── tests/
     ├── fixtures/
     │   └── api.fixture.ts        # Playwright fixtures - shared setup / teardown
@@ -196,7 +204,22 @@ npm test
 npm run test:reqres        # ReqRes tests only (fast, good for CI)
 npm run test:realworld     # RealWorld tests only (deep validation)
 npm run test:mocks         # Mock scenario tests only
+npm run test:postman       # Run the Postman collection via Newman (generates reports/postman/index.html)
 ```
+
+### Run the Postman collection
+
+The Postman collection can be run headlessly via Newman without opening Postman. The mock server must be running first for ReqRes and Mock Server requests:
+
+```bash
+# Terminal 1 — start the mock server
+npm run mock
+
+# Terminal 2 — run the full collection and generate an HTML report
+npm run test:postman
+```
+
+The report is written to `reports/postman/index.html`. Open it in any browser after the run completes.
 
 ### Run a specific file
 
@@ -463,15 +486,19 @@ This lets you point the suite at a staging or local backend without touching `.e
 
 ## Viewing Reports
 
-After any test run, an HTML report is written to `reports/html/` and a JSON report to `reports/results.json`.
+### Playwright report
 
-To open the HTML report:
+After any Playwright test run, an HTML report is written to `reports/html/` and a JSON report to `reports/results.json`.
 
 ```bash
 npm run report
 ```
 
 This opens your browser to a page showing every test with its status, duration, request details, and any failure messages.
+
+### Postman / Newman report
+
+After `npm run test:postman`, an HTML report is written to `reports/postman/index.html`. Open it directly in your browser — it shows per-request results, response bodies, assertion pass/fail detail, and timing.
 
 ---
 
@@ -608,9 +635,137 @@ Ensure Node 18+ is installed. Run `npm install` again to make sure all `@types/*
 
 Port `9090` is taken by another process. Either stop that process or change `MOCK_SERVER_PORT` in your `.env` to a free port (e.g. `9091`).
 
+### Newman ReqRes requests return 403
+
+reqres.in blocks automated clients with Cloudflare. The collection routes ReqRes requests to the local mock server — make sure `npm run mock` is running before executing the collection.
+
+### `npm run test:postman` fails with `ECONNREFUSED`
+
+The mock server is not running. Start it first with `npm run mock` in a separate terminal.
+
 ### HTML report not opening
 
 Run `npm run report` explicitly after tests complete, or open `reports/html/index.html` directly in your browser.
+
+---
+
+## Postman Collection
+
+A ready-to-import Postman collection is provided at the project root: `postman_collection.json`.
+
+It covers all 42 requests across three APIs with `pm.test()` assertions mirroring the Playwright suite, automatic JWT token chaining, and pre-request scripts for dynamic test data generation.
+
+| Folder | Requests | Backend |
+|---|---|---|
+| ReqRes / Auth | 6 | Local mock server |
+| ReqRes / Users | 6 | Local mock server |
+| ReqRes / Schema Contracts | 3 | Local mock server |
+| RealWorld / Auth | 7 | `api.realworld.show` |
+| RealWorld / Articles | 7 | `api.realworld.show` |
+| RealWorld / Comments | 4 | `api.realworld.show` |
+| RealWorld / Profiles | 3 | `api.realworld.show` |
+| Mock Server / Payments | 3 | Local mock server |
+| Mock Server / Notifications | 3 | Local mock server |
+
+---
+
+### Importing into Postman
+
+1. Open Postman desktop
+2. Click **Import** (top left)
+3. Drag and drop `postman_collection.json`, or choose **File** and browse to it
+4. The collection **"API Testing Framework"** will appear in your sidebar with all folders pre-configured
+
+---
+
+### Starting the Mock Server
+
+**Required** before running ReqRes, Mock Server, or `npm run test:postman`. The mock server serves ReqRes endpoints locally (reqres.in is Cloudflare-protected and blocks automated clients) and all payment/notification scenarios.
+
+```bash
+# Start in a separate terminal — keep it running during your session
+npm run mock
+```
+
+The server starts on `http://localhost:9090` (controlled by `MOCK_SERVER_PORT` in `.env`). Press `Ctrl+C` to stop it.
+
+All scenarios are available simultaneously on distinct paths — no restart needed between them:
+
+| Postman request | Path | Response |
+|---|---|---|
+| Login / Register / Users | `/api/login`, `/api/register`, `/api/users/*` | Mirrors reqres.in behaviour |
+| Charge - Success | `POST /api/payments/charge` | 200 `{ status: "completed" }` |
+| Charge - Gateway Failure | `POST /api/payments/charge/fail` | 502 `{ code: "GATEWAY_TIMEOUT" }` |
+| Charge - Slow Response | `POST /api/payments/charge/slow` | 200 `{ status: "pending" }` (3 s delay) |
+| Send - Success | `POST /api/notifications/send` | 200 `{ status: "sent" }` |
+| Send - Service Unavailable | `POST /api/notifications/send/fail` | 503 `{ retryAfter: 60 }` |
+| Send - Queued | `POST /api/notifications/send/slow` | 200 `{ status: "queued" }` (2 s delay) |
+
+---
+
+### Running via Newman (CLI)
+
+Newman is included as a dev dependency. The recommended way to run the full collection and generate an HTML report is:
+
+```bash
+npm run test:postman
+```
+
+This runs all 42 requests and writes the report to `reports/postman/index.html`.
+
+For ad-hoc runs or running a single folder:
+
+```bash
+# Run full collection (console output only)
+npx newman run postman_collection.json
+
+# Run only one folder
+npx newman run postman_collection.json --folder "ReqRes"
+npx newman run postman_collection.json --folder "RealWorld (Conduit)"
+npx newman run postman_collection.json --folder "Mock Server (localhost:9090)"
+```
+
+---
+
+### Collection Variables
+
+| Variable | Default | Description |
+|---|---|---|
+| `reqres_base_url` | `http://localhost:9090` | Routes to mock server — reqres.in blocks automated clients |
+| `realworld_base_url` | `https://api.realworld.show/api` | Live RealWorld API |
+| `mock_base_url` | `http://localhost:9090` | Local mock server |
+| `realworld_token` | *(auto-set)* | JWT — populated by Register or Login |
+| `realworld_username` | *(auto-set)* | Populated by Register |
+| `article_slug` | *(auto-set)* | Populated by Create Article |
+| `comment_id` | *(auto-set)* | Populated by Add Comment |
+
+Override any variable in Postman under **Edit Collection → Variables**, or via Newman with `--env-var key=value`.
+
+---
+
+### Recommended Run Order
+
+When running requests individually in Postman (not via Newman), follow this order to ensure chained variables are set:
+
+1. **RealWorld → Auth → Register User** — sets `realworld_token` and `realworld_username`
+2. **RealWorld → Articles → Create Article** — sets `article_slug`
+3. **RealWorld → Comments → Add Comment** — sets `comment_id`
+4. All other requests can then run in any order
+
+ReqRes requests are fully stateless and can run in any order. `npm run test:postman` handles ordering automatically.
+
+---
+
+### Constraints and Known Limitations
+
+| Constraint | Detail |
+|---|---|
+| **Mock server required** | ReqRes and Mock Server folders require `npm run mock` to be running. reqres.in is protected by Cloudflare and returns 403 to all automated clients including Newman and curl. |
+| **Mock scenario paths differ from Playwright tests** | The Playwright tests register one handler per path at runtime. The standalone mock server exposes all scenarios simultaneously on separate paths (`/charge`, `/charge/fail`, `/charge/slow`). Both test the same handler code. |
+| **JWT token chaining** | RealWorld authenticated endpoints require `{{realworld_token}}`. It is set automatically by Register/Login. Skipping those requests will cause 401/403/422 downstream. |
+| **Dynamic test data** | Register and Create Article generate unique credentials and titles on every run (`user<timestamp>@example.com`). Each run creates new users and articles on the live API — intentional, mirrors Faker.js in the Playwright suite. |
+| **Schema validation** | The Playwright tests use AJV for full JSON Schema validation. Postman uses field-presence and type checks as the closest equivalent. |
+| **RealWorld API flexibility** | This API instance returns different 4xx codes for the same error (e.g. `401`, `403`, or `422` for unauthorized). Tests accept any valid code, matching the Playwright suite's `expect([401, 403, 422]).toContain(status)` pattern. |
 
 ---
 
@@ -628,3 +783,5 @@ Run `npm run report` explicitly after tests complete, or open `reports/html/inde
 | Faker.js - generating test data | https://fakerjs.dev/guide/ |
 | TypeScript handbook | https://www.typescriptlang.org/docs/handbook/intro.html |
 | dotenv - environment variables | https://github.com/motdotla/dotenv#readme |
+| Newman - Postman CLI runner | https://www.npmjs.com/package/newman |
+| newman-reporter-htmlextra | https://www.npmjs.com/package/newman-reporter-htmlextra |

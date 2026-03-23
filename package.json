@@ -12,7 +12,9 @@
     "test:nightly": "npx playwright test --project=realworld-api --reporter=html",
     "test:all": "npx playwright test --reporter=html",
     "report": "npx playwright show-report",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "mock": "tsx src/mocks/start-mock-server.ts",
+    "test:postman": "npx newman run postman_collection.json --reporters cli,htmlextra --reporter-htmlextra-export reports/postman/index.html"
   },
   "devDependencies": {
     "@faker-js/faker": "^9.2.0",
@@ -21,6 +23,8 @@
     "ajv": "^8.17.1",
     "ajv-formats": "^3.0.1",
     "dotenv": "^16.4.5",
+    "newman-reporter-htmlextra": "^1.23.1",
+    "tsx": "^4.19.2",
     "typescript": "^5.6.3"
   }
 }
